@@ -1,0 +1,61 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20250727-create-contacts-active-view
+      author: workwithdante
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              -- Asegurarnos de que el schema existe
+              CREATE SCHEMA IF NOT EXISTS vtigercrm_2022;
+
+              -- Vista contacts_active
+              DROP VIEW IF EXISTS contacts_active CASCADE;
+              CREATE OR REPLACE VIEW contacts_active AS
+              SELECT
+                b.contactid                     AS contactid,
+                b.salesorder_no                 AS so_no,
+                e.contact_no                    AS c_no,
+                a.cf_2119                       AS member_id,
+                a.cf_2257                       AS typer,
+                a.cf_2255::date                 AS typing_date,
+                a.cf_2059::date                 AS effective_partial_date,
+                a.cf_2179::date                 AS sales_date,
+                a.cf_2825                       AS consent,
+                a.cf_2765                       AS state,
+                a.cf_2835                       AS problem,
+                a.cf_2183                       AS sales_person,
+                a.cf_2261::date                 AS paid_through_date,
+                a.cf_2193::date                 AS termination_partial_date,
+                a.cf_2829                       AS sales_type,
+                a.cf_2069                       AS company,
+                TRIM(UPPER(a.cf_2067::text))    AS broker,
+                a.cf_2033                       AS premium,
+                a.cf_1527                       AS document,
+                SUM(
+                  (CASE WHEN a.cf_2385 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                  + (CASE WHEN a.cf_2389 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                  + (CASE WHEN a.cf_2401 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                  + (CASE WHEN a.cf_2439 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                  + (CASE WHEN a.cf_2475 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                  + (CASE WHEN a.cf_2511 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                  + (CASE WHEN a.cf_2615 = 'OBAMACARE' THEN 1 ELSE 0 END)
+                ) OVER (PARTITION BY b.contactid)  AS applicants,
+                a.cf_1463                       AS payment_type,
+                a.cf_2147::integer              AS payday
+              FROM vtiger_salesordercf AS a
+              JOIN vtiger_salesorder    AS b ON a.salesorderid = b.salesorderid
+              JOIN vtiger_contactscf    AS c ON b.contactid = c.contactid
+              JOIN vtiger_crmentity     AS d ON b.salesorderid = d.crmid AND d.deleted = 0
+              JOIN vtiger_contactdetails AS e ON b.contactid = e.contactid
+              WHERE
+                a.cf_2141 NOT IN ('Cancelación', 'Prospecto')
+                AND a.cf_2059::date >= DATE '2025-01-01'
+                AND a.cf_2067 NOT IN ('Otro Broker', 'Broker Error');
+      rollback:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              DROP VIEW IF EXISTS contacts_active CASCADE;
