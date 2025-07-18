@@ -1,0 +1,134 @@
+databaseChangeLog: 
+  - changeSet:
+      id: create_schema_ambetter
+      author: workwithdante
+      changes:
+        - sql:
+            sql: "CREATE SCHEMA IF NOT EXISTS ambetter;"
+  
+  - changeSet:
+      id: create_unlogged_temp
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createTable:
+            schemaName: ambetter
+            tableName: temp
+            tableOptions: UNLOGGED
+            columns:
+              - column:
+                  name: Broker Name
+                  type: text
+              - column:
+                  name: Broker NPN
+                  type: bigint
+              - column:
+                  name: Policy Number
+                  type: text
+              - column:
+                  name: Plan Name
+                  type: text
+              - column:
+                  name: Insured First Name
+                  type: text
+              - column:
+                  name: Insured Last Name
+                  type: text
+              - column:
+                  name: Broker Effective Date
+                  type: text
+              - column:
+                  name: Broker Term Date
+                  type: text
+              - column:
+                  name: Policy Effective Date
+                  type: text
+              - column:
+                  name: Policy Term Date
+                  type: text
+              - column:
+                  name: Paid Through Date
+                  type: text
+              - column:
+                  name: Member Responsibility
+                  type: double precision
+              - column:
+                  name: Monthly Premium Amount
+                  type: double precision
+              - column:
+                  name: County
+                  type: text
+              - column:
+                  name: State
+                  type: text
+              - column:
+                  name: On/Off Exchange
+                  type: text
+              - column:
+                  name: Exchange Subscriber ID
+                  type: text
+              - column:
+                  name: Member Phone Number
+                  type: double precision
+              - column:
+                  name: Member Email
+                  type: text
+              - column:
+                  name: Member Date Of Birth
+                  type: text
+              - column:
+                  name: Autopay
+                  type: text
+              - column:
+                  name: Eligible for Commission
+                  type: text
+              - column:
+                  name: Number of Members
+                  type: bigint
+              - column:
+                  name: Payable Agent
+                  type: text
+              - column:
+                  name: AR Policy Type
+                  type: double precision
+              - column:
+                  name: ICHRA Indicator
+                  type: text
+              - column:
+                  name: Employer Group Name
+                  type: double precision
+              - column:
+                  name: Employer Start Date
+                  type: double precision
+              - column:
+                  name: Employer Subsidy Amount
+                  type: double precision
+              - column:
+                  name: Employer Subsidy Type
+                  type: double precision
+    
+  - changeSet:
+      id: create_view_bs
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createView:
+            schemaName: ambetter
+            viewName: bs
+            replaceIfExists: true
+            selectQuery: |
+              SELECT
+                temp.*,
+                CASE
+                  WHEN (temp."Broker Effective Date"::date   > CURRENT_DATE)
+                    OR (temp."Policy Effective Date"::date   > CURRENT_DATE)
+                    OR (temp."Policy Term Date"::date       > CURRENT_DATE)
+                    OR (temp."Paid Through Date"::date       > CURRENT_DATE)
+                  THEN 'Active'
+                  ELSE 'Inactive'
+                END AS policy_status
+              FROM ambetter.temp AS temp;

@@ -1,0 +1,27 @@
+name,error
+New,false
+New without ticket,true
+New with ticket,false
+New without paid,true
+Bounce,true
+Bounce with ticket,false
+termination_date changed,true
+termination_date changed with ticket,false
+termination_partial_date changed with ticket,false
+termination_partial_date changed,true
+Doesnt exist in crm,true
+Doesnt exist in csv,true
+Doesnt exist in csv with paid,false
+Doesnt exist in csv with problems,true
+effective_date changed,true
+effective_date changed with ticket,false
+premium changed,true
+premium changed with ticket,false
+Delinquent,true
+Delinquent with ticket,false
+Update,false
+payment_type changed,true
+Paid,false
+Update With Ticket,true
+Paid With Ticket,true
+Unknown,true

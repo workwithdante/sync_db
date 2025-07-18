@@ -1,0 +1,160 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_schema_oscar
+      author: workwithdante
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE SCHEMA IF NOT EXISTS oscar;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: |
+              DROP SCHEMA IF EXISTS oscar CASCADE;
+
+  - changeSet:
+      id: create_unlogged_temp_oscar
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createTable:
+            schemaName: oscar
+            tableName: temp
+            tableOptions: UNLOGGED
+            columns:
+              - column:
+                  name: Member ID
+                  type: text
+              - column:
+                  name: Member name
+                  type: text
+              - column:
+                  name: Date of birth
+                  type: text
+              - column:
+                  name: Account creation status
+                  type: text
+              - column:
+                  name: Email
+                  type: text
+              - column:
+                  name: Phone number
+                  type: double precision
+              - column:
+                  name: Mailing address
+                  type: text
+              - column:
+                  name: State
+                  type: text
+              - column:
+                  name: Enrollment type
+                  type: text
+              - column:
+                  name: On exchange
+                  type: text
+              - column:
+                  name: Plan
+                  type: text
+              - column:
+                  name: Premium amount
+                  type: text
+              - column:
+                  name: APTC subsidy
+                  type: text
+              - column:
+                  name: Lives
+                  type: bigint
+              - column:
+                  name: Coverage start date
+                  type: text
+              - column:
+                  name: Coverage end date
+                  type: text
+              - column:
+                  name: Policy status
+                  type: text
+              - column:
+                  name: Renewal enrollment type
+                  type: double precision
+              - column:
+                  name: Renewal plan
+                  type: double precision
+              - column:
+                  name: Renewal premium amount
+                  type: double precision
+              - column:
+                  name: Renewal APTC subsidy
+                  type: double precision
+              - column:
+                  name: Renewal date
+                  type: double precision
+              - column:
+                  name: Autopay
+                  type: text
+              - column:
+                  name: ICHRA member
+                  type: text
+              - column:
+                  name: Estimated FPL
+                  type: integer
+      rollback:
+        - dropTable:
+            schemaName: oscar
+            tableName: temp
+
+  - changeSet:
+      id: create_view_bs_oscar
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createView:
+            schemaName: oscar
+            viewName: bs
+            replaceIfExists: true
+            selectQuery: |
+              SELECT
+                temp.*,
+                CASE "Policy status"
+                  WHEN 'Active'       THEN company.last_day_curdate()
+                  WHEN 'Grace period' THEN company.last_day_last_month()
+                  WHEN 'Delinquent'   THEN company.last_day_two_last_month()
+                  ELSE NULL
+                END AS paid_through_date
+              FROM oscar.temp AS temp;
+      rollback:
+        - dropView:
+            schemaName: oscar
+            viewName: bs
+            cascade: true
+
+  - changeSet:
+      id: create_view_adc_oscar
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createView:
+            schemaName: oscar
+            viewName: adc
+            replaceIfExists: true
+            selectQuery: |
+              SELECT
+                temp.*,
+                CASE "Policy status"
+                  WHEN 'Active'       THEN company.last_day_curdate()
+                  WHEN 'Grace period' THEN company.last_day_last_month()
+                  WHEN 'Delinquent'   THEN company.last_day_two_last_month()
+                  ELSE NULL
+                END AS paid_through_date
+              FROM oscar.temp AS temp;
+      rollback:
+        - dropView:
+            schemaName: oscar
+            viewName: adc
+            cascade: true

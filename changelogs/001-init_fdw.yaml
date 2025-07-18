@@ -1,31 +1,50 @@
-databaseChangeLog:
+databaseChangeLog: 
   - changeSet:
-      id: 20250726-01-init-fdw
+      id: create_extension_mysql_fdw
+      author: workwithdante
+      changes:
+        - sql:
+            sql: "CREATE EXTENSION IF NOT EXISTS mysql_fdw;"
+  
+  - changeSet:
+      id: create_server_fdw
+      author: workwithdante
+      changes:
+        - sql:
+            sql: |
+              CREATE SERVER mariadb_srv
+                FOREIGN DATA WRAPPER mysql_fdw
+              OPTIONS (
+                host '192.168.99.117',
+                port '3307'
+              );
+
+              CREATE USER MAPPING FOR postgres
+                SERVER mariadb_srv
+              OPTIONS (
+                username 'root',
+                password '042285'
+              );
+      rollback:
+        - sql:
+            sql: |
+              DROP SERVER IF EXISTS mariadb_srv CASCADE;
+  
+  - changeSet:
+      id: create_schema_vtigercrm_2022
+      author: workwithdante
+      changes:
+        - sql:
+            sql: "CREATE SCHEMA IF NOT EXISTS vtigercrm_2022;"
+
+  - changeSet:
+      id: init_fdw
       author: workwithdante
       changes:
         - sql:
             splitStatements: false
             stripComments: true
             sql: |
-              CREATE SCHEMA IF NOT EXISTS vtigercrm_2022;
-              SET search_path = vtigercrm_2022;
-
-              CREATE EXTENSION IF NOT EXISTS mysql_fdw;
-
-              CREATE SERVER mariadb_srv
-                FOREIGN DATA WRAPPER mysql_fdw
-                OPTIONS (
-                  host '192.168.99.117',
-                  port '3307'
-                );
-
-              CREATE USER MAPPING FOR postgres
-                SERVER mariadb_srv
-                OPTIONS (
-                  username 'root',
-                  password '042285'
-                );
-
               ----------------------------
               -- vtiger_contactdetails
               ----------------------------
@@ -67,7 +86,7 @@ databaseChangeLog:
                 contactid     BIGINT NOT NULL,
                 cf_755        TEXT,
                 cf_757        TEXT,
-                cf_759        TEXT,
+                cf_759        DATE,
                 cf_763        TEXT,
                 cf_767        TEXT,
                 cf_771        TEXT,
@@ -93,7 +112,7 @@ databaseChangeLog:
                 cf_1777       TEXT,
                 cf_1779       TEXT,
                 cf_1781       TEXT,
-                cf_1873       TEXT,
+                cf_1873       DATE,
                 cf_1875       TEXT,
                 cf_1881       TEXT,
                 cf_1885       SMALLINT,
@@ -126,7 +145,7 @@ databaseChangeLog:
                 cf_2217       TEXT,
                 cf_2227       TEXT,
                 cf_2245       TEXT,
-                cf_2247       TEXT,
+                cf_2247       DATE,
                 cf_2249       TEXT,
                 cf_2251       TEXT,
                 cf_2253       INTEGER,
@@ -139,7 +158,7 @@ databaseChangeLog:
                 cf_2287       TEXT,
                 cf_2319       TEXT,
                 cf_2721       TEXT,
-                cf_2723       TEXT,
+                cf_2723       DATE,
                 cf_2763       TEXT,
                 cf_2767       TEXT,
                 cf_2775       TEXT,
@@ -192,7 +211,7 @@ databaseChangeLog:
                 vendorterms      TEXT,
                 contactid        BIGINT,
                 vendorid         BIGINT,
-                duedate          TEXT,
+                duedate          DATE,
                 carrier          TEXT,
                 pending          TEXT,
                 type             TEXT,
@@ -246,7 +265,7 @@ databaseChangeLog:
                 cf_1505       TEXT,
                 cf_1507       TEXT,
                 cf_1509       TEXT,
-                cf_1513       TEXT,
+                cf_1513       DATE,
                 cf_1515       TEXT,
                 cf_1517       TEXT,
                 cf_1519       TEXT,
@@ -270,7 +289,7 @@ databaseChangeLog:
                 cf_2053       TEXT,
                 cf_2055       TEXT,
                 cf_2057       TEXT,
-                cf_2059       TEXT,
+                cf_2059       DATE,
                 cf_2061       TEXT,
                 cf_2063       TEXT,
                 cf_2065       TEXT,
@@ -279,27 +298,27 @@ databaseChangeLog:
                 cf_2071       TEXT,
                 cf_2115       TEXT,
                 cf_2119       TEXT,
-                cf_2129       TEXT,
+                cf_2129       DATE,
                 cf_2141       TEXT,
                 cf_2143       INTEGER,
                 cf_2145       TEXT,
                 cf_2147       SMALLINT,
                 cf_2157       TEXT,
-                cf_2179       TEXT,
+                cf_2179       DATE,
                 cf_2183       TEXT,
-                cf_2193       TEXT,
+                cf_2193       DATE,
                 cf_2203       TEXT,
                 cf_2215       TEXT,
-                cf_2255       TEXT,
+                cf_2255       DATE,
                 cf_2257       TEXT,
-                cf_2261       TEXT,
-                cf_2263       TEXT,
+                cf_2261       DATE,
+                cf_2263       DATE,
                 cf_2273       TEXT,
                 cf_2291       INTEGER,
                 cf_2293       TEXT,
                 cf_2295       TEXT,
                 cf_2297       TEXT,
-                cf_2299       TEXT,
+                cf_2299       DATE,
                 cf_2303       TEXT,
                 cf_2321       TEXT,
                 cf_2323       TEXT,
@@ -311,7 +330,7 @@ databaseChangeLog:
                 cf_2347       TEXT,
                 cf_2349       TEXT,
                 cf_2351       TEXT,
-                cf_2355       TEXT,
+                cf_2355       DATE,
                 cf_2357       TEXT,
                 cf_2359       TEXT,
                 cf_2369       TEXT,
@@ -327,7 +346,7 @@ databaseChangeLog:
                 cf_2407       TEXT,
                 cf_2409       TEXT,
                 cf_2411       TEXT,
-                cf_2413       TEXT,
+                cf_2413       DATE,
                 cf_2417       TEXT,
                 cf_2423       TEXT,
                 cf_2431       TEXT,
@@ -339,7 +358,7 @@ databaseChangeLog:
                 cf_2445       TEXT,
                 cf_2447       TEXT,
                 cf_2449       TEXT,
-                cf_2451       TEXT,
+                cf_2451       DATE,
                 cf_2455       TEXT,
                 cf_2459       TEXT,
                 cf_2465       TEXT,
@@ -351,7 +370,7 @@ databaseChangeLog:
                 cf_2481       TEXT,
                 cf_2483       TEXT,
                 cf_2485       TEXT,
-                cf_2487       TEXT,
+                cf_2487       DATE,
                 cf_2491       TEXT,
                 cf_2495       TEXT,
                 cf_2501       TEXT,
@@ -363,7 +382,7 @@ databaseChangeLog:
                 cf_2517       TEXT,
                 cf_2519       TEXT,
                 cf_2521       TEXT,
-                cf_2523       TEXT,
+                cf_2523       DATE,
                 cf_2527       TEXT,
                 cf_2531       TEXT,
                 cf_2537       TEXT,
@@ -382,7 +401,7 @@ databaseChangeLog:
                 cf_2647       TEXT,
                 cf_2649       TEXT,
                 cf_2679       TEXT,
-                cf_2681       TEXT,
+                cf_2681       DATE,
                 cf_2683       TEXT,
                 cf_2685       TEXT,
                 cf_2687       TEXT,
@@ -439,7 +458,7 @@ databaseChangeLog:
                 cf_2209      TEXT,
                 cf_2259      TEXT,
                 cf_2727      TEXT,
-                cf_2853      TEXT,
+                cf_2853      DATE,
                 cf_2855      TEXT,
                 cf_2857      INTEGER
               ) SERVER mariadb_srv

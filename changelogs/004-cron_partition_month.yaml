@@ -1,0 +1,100 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_extension_mysql_fdw
+      author: workwithdante
+      changes:
+        - sql:
+            sql: "CREATE EXTENSION IF NOT EXISTS pg_cron;"
+
+  - changeSet:
+      id: create_function_create_partition_for_month
+      author: workwithdante
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              CREATE OR REPLACE FUNCTION config.create_partition_for_month(p_dt date)
+              RETURNS void
+              LANGUAGE plpgsql
+              AS $$
+              DECLARE
+                start_ts  timestamp := date_trunc('month', p_dt);
+                end_ts    timestamp := start_ts + INTERVAL '1 month';
+                suffix    text      := to_char(start_ts, 'YYYY_MM');
+              BEGIN
+                EXECUTE format(
+                  $sql$
+                  CREATE TABLE IF NOT EXISTS %I.%I
+                    PARTITION OF %I.%I
+                    FOR VALUES FROM (%L) TO (%L)
+                  $sql$,
+                  'config',                              -- esquema de la partición
+                  'status_results_' || suffix,           -- nombre de la partición
+                  'config',                              -- esquema de la tabla padre
+                  'status_results',                       -- tabla padre
+                  start_ts,                               -- bound FROM (timestamp literal)
+                  end_ts                                  -- bound TO   (timestamp literal)
+                );
+              END;
+              $$;
+
+      rollback:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              DROP FUNCTION IF EXISTS config.create_partition_for_month(date);
+
+  - changeSet:
+      id: create_contacts_active_view
+      author: workwithdante
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              
+
+              CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+              -- Create cron_job for detect new month
+              DO $$
+              BEGIN
+                IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+
+                  -- Desprograma si ya existe
+                  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'create_next_month_partition') THEN
+                    PERFORM cron.unschedule('create_next_month_partition');
+                  END IF;
+
+                  -- Programa (o reprograma) el job diario
+                  PERFORM cron.schedule(
+                    'create_next_month_partition',
+                    '0 0 * * *',
+                    $job$
+                      DO
+                      BEGIN
+                        -- date_trunc('month', now()) arroja el primer día de este mes
+                        PERFORM config.create_partition_for_month(
+                          date_trunc('month', now())::date
+                        );
+                      END;
+                    $job$
+                  );
+
+                  -- Y aquí, inmediatamente, crea la partición del mes actual
+                  PERFORM config.create_partition_for_month(now()::date);
+
+                ELSE
+                  RAISE NOTICE 'pg_cron no está instalado; usa cron del SO o pgAgent';
+                END IF;
+              END;
+              $$;
+      rollback:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              DROP VIEW IF EXISTS vtigercrm_2022.contacts_active CASCADE;
+  

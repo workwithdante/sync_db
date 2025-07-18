@@ -1,0 +1,157 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_schema_molina
+      author: workwithdante
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE SCHEMA IF NOT EXISTS molina;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: |
+              DROP SCHEMA IF EXISTS molina CASCADE;
+
+  - changeSet:
+      id: create_unlogged_temp_molina
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createTable:
+            schemaName: molina
+            tableName: temp
+            tableOptions: UNLOGGED
+            columns:
+              - column:
+                  name: Broker_NPN
+                  type: bigint
+              - column:
+                  name: Broker_First_Name
+                  type: text
+              - column:
+                  name: Broker_Last_Name
+                  type: text
+              - column:
+                  name: Member_First_Name
+                  type: text
+              - column:
+                  name: Member_Last_Name
+                  type: text
+              - column:
+                  name: Address1
+                  type: text
+              - column:
+                  name: Address2
+                  type: text
+              - column:
+                  name: City
+                  type: text
+              - column:
+                  name: State
+                  type: text
+              - column:
+                  name: Zip
+                  type: bigint
+              - column:
+                  name: State.1
+                  type: text
+              - column:
+                  name: dob
+                  type: text
+              - column:
+                  name: Gender
+                  type: text
+              - column:
+                  name: Application_Date
+                  type: text
+              - column:
+                  name: Effective_date
+                  type: text
+              - column:
+                  name: Product
+                  type: text
+              - column:
+                  name: End_Date
+                  type: text
+              - column:
+                  name: Status
+                  type: text
+              - column:
+                  name: Member_Premium
+                  type: double precision
+              - column:
+                  name: Total_Premium
+                  type: double precision
+              - column:
+                  name: Paid_Through_Date
+                  type: text
+              - column:
+                  name: Net_Due_Amount
+                  type: double precision
+              - column:
+                  name: Scheduled_Term_Date
+                  type: text
+              - column:
+                  name: HIX_ID
+                  type: text
+              - column:
+                  name: Subscriber_ID
+                  type: text
+              - column:
+                  name: Member_Count
+                  type: bigint
+              - column:
+                  name: Member_Bussiness_Phone
+                  type: bigint
+              - column:
+                  name: Original_Effective_Date
+                  type: text
+              - column:
+                  name: Broker_Start_Date
+                  type: text
+              - column:
+                  name: Broker_End_Date
+                  type: text
+      rollback:
+        - dropTable:
+            schemaName: molina
+            tableName: temp
+
+  - changeSet:
+      id: create_view_bs_molina
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - createView:
+            schemaName: molina
+            viewName: bs
+            replaceIfExists: true
+            selectQuery: |
+              WITH temp2 AS (
+                SELECT
+                  t.*,
+                  (
+                    CASE
+                      WHEN t."Status" = 'Active' THEN company.last_day_curyear()
+                      ELSE t."End_Date"
+                    END
+                  )::date AS termination_date
+                FROM molina.temp AS t
+              )
+              SELECT
+                temp2.*,
+                CASE
+                  WHEN temp2."Status" = 'Active' THEN 'Active'
+                  ELSE 'Inactive'
+                END AS policy_status
+              FROM temp2;
+      rollback:
+        - dropView:
+            schemaName: molina
+            viewName: bs
+            cascade: true

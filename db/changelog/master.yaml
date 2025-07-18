@@ -1,6 +1,0 @@
-databaseChangeLog:
-  - include:
-      file: db/changelog/20250726-init-fdw.yaml
-  - include:
-      file: db/changelog/20250727-create-contacts-active-view.yaml
-  # - include: ¡añade aquí cada nuevo archivo!

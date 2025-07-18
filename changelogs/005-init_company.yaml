@@ -1,0 +1,330 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_schema_company
+      author: workwithdante
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE SCHEMA IF NOT EXISTS company;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: |
+              DROP SCHEMA IF EXISTS oscar company;
+  - changeSet:
+      id: create_build_args_csv
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+              CREATE OR REPLACE FUNCTION company.build_args_csv(
+                  p_dispatcher_id INT
+              ) RETURNS TEXT
+              LANGUAGE plpgsql IMMUTABLE AS $$
+              DECLARE
+                  args_company TEXT;
+                  v_schema TEXT;
+                  v_table TEXT;
+              BEGIN
+                  SELECT csd.company, csd.tbl
+                    INTO v_schema, v_table
+                  FROM config.dispatcher csd
+                  WHERE csd.id = p_dispatcher_id;
+                  IF v_schema IS NULL THEN
+                      RETURN NULL;
+                  END IF;
+                  SELECT string_agg(
+                      CASE 
+                          WHEN c.data_type IN (
+                              'date',
+                              'timestamp',
+                              'timestamp without time zone',
+                              'timestamp with time zone',
+                              'character varying',
+                              'text'
+                          ) AND f.field_name ~* 'date' THEN
+                              format('%L, TO_CHAR(company.%I::date, ''YYYY-MM-DD'')',
+                                     f.field_name,
+                                     si.column_name)
+                          WHEN c.data_type IN ('character varying','text')
+                               AND f.field_name ~* 'premium' THEN
+                              format(
+                                '%L, COALESCE(CASE WHEN company.%I ~ ''^\$'' THEN CAST(regexp_replace(company.%I, ''^\$'', '''', ''g'') AS NUMERIC) WHEN company.%I IS NULL THEN NULL ELSE company.%I::NUMERIC END, NULL)',
+                                f.field_name, si.column_name, si.column_name, si.column_name, si.column_name
+                              )
+                          WHEN c.data_type IN ('integer','bigint','smallint') THEN
+                              format('%L, COALESCE(company.%I,0)', f.field_name, si.column_name)
+                          ELSE
+                              format('%L, company.%I', f.field_name, si.column_name)
+                      END,
+                      ', '
+                  ) INTO args_company
+                  FROM config.input_field si
+                  JOIN config.fields f ON si.field_id = f.id
+                  JOIN information_schema.columns c
+                    ON c.table_schema = v_schema
+                   AND c.table_name   = v_table
+                   AND c.column_name  = si.column_name
+                  WHERE si.dispatcher_id = p_dispatcher_id;
+                  RETURN args_company;
+              END;
+              $$;
+      rollback:
+          - sql:
+              splitStatements: false
+              stripComments: true
+              sql: DROP FUNCTION IF EXISTS company.build_args_csv(INT) CASCADE;
+
+  - changeSet:
+      id: create_build_args_crm
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |                
+              CREATE OR REPLACE FUNCTION company.build_args_crm()
+              RETURNS TEXT
+              LANGUAGE plpgsql IMMUTABLE AS $$
+              DECLARE
+                  args_data TEXT;
+              BEGIN
+                  SELECT string_agg(
+                      '''' || field_name || ''', data.' || field_name,
+                      ', '
+                      ORDER BY id
+                  ) INTO args_data
+                  FROM config.fields
+                  WHERE mandatory = TRUE;
+                  RETURN args_data;
+              END;
+              $$;
+      rollback:
+          - sql:
+              splitStatements: false
+              stripComments: true
+              sql: DROP FUNCTION IF EXISTS company.build_args_crm() CASCADE;
+
+  - changeSet:
+      id: create_build_query
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |                
+              CREATE OR REPLACE FUNCTION company.build_query(
+                  p_company_code TEXT,
+                  p_broker_code INT,
+                  join_sql TEXT,
+                  p_args_crm TEXT,
+                  p_args_csv TEXT,
+                  condition_sql TEXT,
+                  p_batch_name TEXT,
+                  p_process_date TIMESTAMPTZ,
+                  tbl_temp TEXT
+              ) RETURNS TEXT
+              LANGUAGE plpgsql VOLATILE AS $$
+              DECLARE
+                dyn_sql TEXT;
+              BEGIN
+                  dyn_sql := format(
+                  $SQL$
+                      WITH fin AS (
+                          SELECT
+                              st.status,
+                              crm.row_json AS crm,
+                              st.new_clean_input_data_csv AS csv
+                          FROM vtigercrm_2022.contacts_monitored AS data
+                          FULL OUTER JOIN %1$I.%9$I AS company
+                            ON %3$s
+                          CROSS JOIN LATERAL (
+                              SELECT nullif(jsonb_strip_nulls(jsonb_build_object(%4$s)),'{}'::jsonb) AS row_json
+                          ) AS crm
+                          CROSS JOIN LATERAL (
+                              SELECT nullif(jsonb_strip_nulls(jsonb_build_object(%5$s)),'{}'::jsonb) AS row_json
+                          ) AS csv
+                          LEFT JOIN LATERAL (
+                              SELECT * FROM %1$I.get_status(csv.row_json, crm.row_json)
+                          ) AS st ON TRUE
+                          WHERE %6$s
+                      )
+                      INSERT INTO company.status_results (
+                          process_date,
+                          batch_name,
+                          company,
+                          broker,
+                          status,
+                          crm_data,
+                          csv_data
+                      )
+                      SELECT
+                          %7$L,
+                          %8$L,
+                          %1$L,
+                          %2$L,
+                          status,
+                          crm,
+                          csv
+                      FROM fin
+                      RETURNING status, crm_data AS crm, csv_data AS csv
+                  $SQL$,
+                      p_company_code,
+                      p_broker_code,
+                      join_sql,
+                      p_args_crm,
+                      p_args_csv,
+                      condition_sql,
+                      p_process_date,
+                      p_batch_name,
+                      tbl_temp
+                  );
+                  RETURN dyn_sql;
+              END;
+              $$;
+      rollback:
+          - sql:
+              splitStatements: false
+              stripComments: true
+              sql: DROP FUNCTION IF EXISTS company.build_query(TEXT,INT,TEXT,TEXT,TEXT,TEXT,TEXT,TIMESTAMPTZ,TEXT) CASCADE;
+
+  - changeSet:
+      id: create_evaluate_status
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |                        
+              -- 4) evaluate_status
+              CREATE OR REPLACE FUNCTION company.evaluate_status(
+                  input_data_csv JSONB,
+                  input_data_crm JSONB
+              ) RETURNS TEXT
+              LANGUAGE plpgsql STABLE AS $$
+              DECLARE
+                  rule RECORD;
+                  fn_schema TEXT;
+                  fn_name TEXT;
+                  fqfn TEXT;
+                  r_out config.rule_out;
+              BEGIN
+                  FOR rule IN
+                    SELECT rule_fn, result_label
+                      FROM config.rules
+                     ORDER BY priority
+                  LOOP
+                      SELECT n.nspname, p.proname
+                        INTO fn_schema, fn_name
+                      FROM pg_proc p
+                      JOIN pg_namespace n ON n.oid = p.pronamespace
+                      WHERE p.oid = rule.rule_fn;
+                      fqfn := quote_ident(fn_schema)||'.'||quote_ident(fn_name);
+                      EXECUTE format('SELECT * FROM %s($1::jsonb,$2::jsonb)',fqfn)
+                        INTO r_out USING input_data_csv, input_data_crm;
+                      IF r_out.applies THEN
+                          RETURN COALESCE(r_out.label_out, rule.result_label);
+                      END IF;
+                  END LOOP;
+                  RETURN 'Unknown';
+              END;
+              $$;
+      rollback:
+          - sql:
+              splitStatements: false
+              stripComments: true
+              sql: DROP FUNCTION IF EXISTS company.evaluate_status(JSONB,JSONB) CASCADE;
+
+  - changeSet:
+      id: create_get_status_by
+      author: workwithdante
+      preConditions:
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |                        
+              CREATE OR REPLACE FUNCTION company.get_status_by(
+                  p_company TEXT,
+                  p_broker INT,
+                  batch_name TEXT,
+                  process_date TIMESTAMPTZ
+              ) RETURNS TABLE(status TEXT, crm JSONB, csv JSONB)
+              LANGUAGE plpgsql VOLATILE AS $$
+              DECLARE
+                  v_dispatcher_id INT;
+                  json_args_csv TEXT;
+                  json_args_crm TEXT;
+                  join_col TEXT;
+                  status_col TEXT;
+                  join_sql TEXT;
+                  condition_sql TEXT;
+                  p_tbl TEXT;
+                  p_company_code TEXT := lower(p_company);
+                  p_broker_name TEXT;
+              BEGIN
+                  IF p_company_code IS NULL OR p_broker IS NULL THEN RETURN; END IF;
+                  SELECT csd.id, csd.tbl, bi.name
+                    INTO v_dispatcher_id, p_tbl, p_broker_name
+                  FROM config.dispatcher csd
+                  JOIN company.broker_info bi ON bi.id=csd.broker_id
+                  WHERE csd.company=p_company_code AND bi.npn=p_broker LIMIT 1;
+                  IF v_dispatcher_id IS NULL THEN RETURN; END IF;
+                  json_args_crm := company.build_args_crm();
+                  json_args_csv := company.build_args_csv(v_dispatcher_id);
+                  SELECT inf.column_name INTO join_col
+                    FROM config.input_field inf
+                    JOIN config.fields f ON f.id=inf.field_id
+                    WHERE inf.dispatcher_id=v_dispatcher_id AND f.field_name='member_id' LIMIT 1;
+                  SELECT inf.column_name INTO status_col
+                    FROM config.input_field inf
+                    JOIN config.fields f ON f.id=inf.field_id
+                    WHERE inf.dispatcher_id=v_dispatcher_id AND f.field_name='policy_status' LIMIT 1;
+                  IF p_company_code IN ('molina','aetna') THEN
+                    join_sql := format('company.%I = data.member_id', join_col);
+                  ELSE
+                    join_sql := format('company.member_id_match(company.%I,data.member_id)', join_col);
+                  END IF;
+                  join_sql := join_sql||format(
+                    ' AND data.company=%L AND data.broker=%L',
+                    initcap(p_company), upper(p_broker_name)
+                  );
+                  condition_sql := format(
+                    '(data.company=%L AND data.broker=%L) OR (data.company IS NULL AND company.%I<>%L)',
+                    initcap(p_company), upper(p_broker_name), status_col, 'Inactive'
+                  );
+                  RETURN QUERY EXECUTE company.build_query(
+                    p_company_code,
+                    p_broker,
+                    join_sql,
+                    json_args_crm,
+                    json_args_csv,
+                    condition_sql,
+                    batch_name,
+                    process_date,
+                    p_tbl
+                  );
+              END;
+              $$;
+      rollback:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: DROP FUNCTION IF EXISTS company.get_status_by(TEXT,INT,TEXT,TIMESTAMPTZ) CASCADE;

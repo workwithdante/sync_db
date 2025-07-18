@@ -1,0 +1,21 @@
+databaseChangeLog:
+    - include:
+        file: changelogs/001-init_fdw.yaml
+    - include:
+        file: changelogs/002-create_foreign_views.yaml
+    - include:
+        file: changelogs/003-init_config.yaml    
+    - include:
+        file: changelogs/004-cron_partition_month.yaml
+    - include:
+        file: changelogs/005-init_company.yaml
+    - include:
+        file: changelogs/006-create_helpers_date.yaml
+    - include:
+        file: changelogs/007-create_ambetter_config.yaml
+    - include:
+        file: changelogs/008-create_molina_config.yaml
+    - include:
+        file: changelogs/009-create_aetna_config.yaml
+    - include:
+        file: changelogs/010-create_oscar_config.yaml
