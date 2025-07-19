@@ -1,0 +1,22 @@
+{
+  // **Indentación global**: usa espacios en lugar de tabs, y 4 espacios de ancho
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+
+  // **YAML explícito** (si solo quieres para yml/yaml)
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
+
+  // **SQL explícito** (si solo quieres para .sql)
+  "[sql]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
+
+  "[json]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  }
+}

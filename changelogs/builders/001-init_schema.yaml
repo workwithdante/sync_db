@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_schema_builders
+      author: workwithdante
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE SCHEMA IF NOT EXISTS builders;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: |
+              DROP SCHEMA IF EXISTS builders;
