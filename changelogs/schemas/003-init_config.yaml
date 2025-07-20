@@ -1,0 +1,433 @@
+databaseChangeLog:
+    - changeSet:
+        id: create_schema_config
+        author: workwithdante
+        changes:
+            - sql:
+                sql: "CREATE SCHEMA IF NOT EXISTS config;"
+        rollback:
+            - sql:
+                sql: "DROP SCHEMA IF EXISTS config;"
+
+    - changeSet:
+        id: create_table_broker_info
+        author: workwithdante
+        changes:
+            - createTable:
+                tableName: broker_info
+                schemaName: config
+                columns:
+                - column:
+                    name: id
+                    type: serial
+                    constraints:
+                        primaryKey: true
+                        nullable: false
+                - column:
+                    name: name
+                    type: text
+                    constraints:
+                        nullable: false
+                - column:
+                    name: npn
+                    type: int
+                    constraints:
+                        nullable: false
+                        unique: true
+
+    - changeSet:
+        id: insert_broker_info
+        author: workwithdante
+        changes:
+            - loadData:
+                schemaName: config
+                tableName: broker_info
+                file: changelogs/schemas/config/brokers.csv
+        rollback:
+            - sql:
+                sql: "TRUNCATE TABLE config.broker_info;"
+
+    - changeSet:
+        id: create_table_staging_dispatcher
+        author: workwithdante
+        changes:
+        - createTable:
+            schemaName: config
+            tableName: staging_dispatcher
+            columns:
+                - column:
+                    name: company
+                    type: varchar(100)
+                    constraints:
+                        nullable: false
+                - column:
+                    name: broker_code
+                    type: int
+                    constraints:
+                        nullable: false
+                - column:
+                    name: tbl
+                    type: varchar(50)
+                    constraints:
+                        nullable: false
+
+    - changeSet:
+        id: insert_broker_with_table
+        author: workwithdante
+        changes:
+            - loadData:
+                schemaName: config
+                tableName: staging_dispatcher
+                file: changelogs/schemas/config/brokers_with_table.csv
+        rollback:
+            - sql:
+                sql: "TRUNCATE TABLE config.staging_dispatcher;"
+    
+    - changeSet:
+        id: create_table_dispatcher
+        author: workwithdante
+        changes:
+            - createTable:
+                tableName: dispatcher
+                schemaName: config
+                columns:
+                - column:
+                    name: id
+                    type: serial
+                    constraints:
+                        primaryKey: true
+                        nullable: false
+                - column:
+                    name: company
+                    type: text
+                    constraints:
+                        nullable: false
+                - column:
+                    name: broker_id
+                    type: int
+                    constraints:
+                        nullable: false
+                - column:
+                    name: tbl
+                    type: TEXT
+                    constraints:
+                        nullable: false
+
+            - addUniqueConstraint:
+                schemaName: config
+                tableName: dispatcher
+                columnNames: company,broker_id
+                constraintName: unique_company_broker
+
+            - addForeignKeyConstraint:
+                baseTableSchemaName: config
+                baseTableName: dispatcher
+                baseColumnNames: broker_id
+                constraintName: fk_dispatcher_broker
+                referencedTableSchemaName: config
+                referencedTableName: broker_info
+                referencedColumnNames: id
+                onUpdate: CASCADE
+                onDelete: RESTRICT
+
+    - changeSet:
+        id: insert_from_staging_dispatcher
+        author: workwithdante
+        changes:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            sql: |
+                INSERT INTO config.dispatcher (company, broker_id, tbl)
+                SELECT s.company, bi.id, s.tbl
+                FROM config.staging_dispatcher s
+                JOIN config.broker_info bi ON bi.npn = s.broker_code
+                ON CONFLICT (company, broker_id) DO NOTHING;
+        rollback:
+        - sql:
+            sql: |
+                DELETE FROM config.dispatcher d
+                USING config.staging_dispatcher s
+                WHERE d.company = s.company
+                AND d.broker_id = (SELECT id FROM config.broker_info bi WHERE bi.npn = s.broker_code LIMIT 1);
+
+
+    - changeSet:
+        id: create_table_fields
+        author: workwithdante
+        changes:
+            - createTable:
+                schemaName: config
+                tableName: fields
+                columns:
+                - column:
+                    name: id
+                    type: serial
+                    constraints:
+                        primaryKey: true
+                        nullable: false
+                - column:
+                    name: field_name
+                    type: text
+                    constraints:
+                        nullable: false
+                        unique: true
+                - column:
+                    name: mandatory
+                    type: boolean
+                    defaultValueBoolean: false
+                    constraints:
+                        nullable: false
+
+    - changeSet:
+        id: load_or_update_fields
+        author: workwithdante
+        changes:
+            - loadUpdateData:
+                schemaName: config
+                tableName: fields
+                primaryKey: field_name
+                file: changelogs/schemas/config/fields.csv
+
+    - changeSet:
+        id: create_staging_input_field
+        author: workwithdante
+        changes:
+            - createTable:
+                tableName: staging_input_field
+                schemaName: config
+                columns:
+                - column:
+                    name: company
+                    type: varchar(100)
+                - column:
+                    name: broker_name
+                    type: varchar(100)
+                - column:
+                    name: field_name
+                    type: varchar(100)
+                - column:
+                    name: column_name
+                    type: varchar(255)
+
+    - changeSet:
+        id: load_staging_input_field_data
+        author: workwithdante
+        changes:
+            - loadData:
+                schemaName: config
+                primaryKey: company
+                tableName: staging_input_field
+                file: changelogs/schemas/config/input_fields.csv
+        rollback:
+            - sql:
+                sql: "TRUNCATE TABLE config.staging_input_field;"
+    
+    - changeSet:
+        id: create_table_input_field
+        author: workwithdante
+        changes:
+            - createTable:
+                schemaName: config
+                tableName: input_field
+                columns:
+                - column:
+                    name: dispatcher_id
+                    type: int
+                    constraints:
+                        nullable: false
+                - column:
+                    name: field_id
+                    type: int
+                    constraints:
+                        nullable: false
+                - column:
+                    name: column_name
+                    type: text
+                    constraints:
+                        nullable: false
+
+            - addPrimaryKey:
+                schemaName: config
+                tableName: input_field
+                columnNames: dispatcher_id,field_id
+                constraintName: pk_input_field
+
+            - addForeignKeyConstraint:
+                baseTableSchemaName: config
+                baseTableName: input_field
+                baseColumnNames: field_id
+                constraintName: fk_input_field_field
+                referencedTableSchemaName: config
+                referencedTableName: fields
+                referencedColumnNames: id
+                onDelete: CASCADE
+
+    - changeSet:
+        id: insert_config_input_field_data
+        author: workwithdante
+        changes:
+            - sql:
+                sql: |
+                    INSERT INTO config.input_field(dispatcher_id, field_id, column_name)
+                    SELECT d.id, f.id, s.column_name
+                    FROM config.staging_input_field s
+                    JOIN config.dispatcher d ON d.company = s.company
+                    JOIN config.broker_info bi ON bi.id = d.broker_id AND bi.name = s.broker_name
+                    JOIN config.fields f ON f.field_name = s.field_name
+                    ON CONFLICT (dispatcher_id, field_id)
+                        DO UPDATE SET column_name = EXCLUDED.column_name;
+        rollback:
+            - sql:
+                sql: |
+                    DELETE FROM config.input_field i
+                    USING config.staging_input_field s,
+                            config.dispatcher d,
+                            config.broker_info bi,
+                            config.fields f
+                    WHERE i.dispatcher_id = d.id
+                        AND i.field_id = f.id
+                        AND d.company = s.company
+                        AND bi.id = d.broker_id
+                        AND bi.name = s.broker_name
+                        AND f.field_name = s.field_name;
+
+    - changeSet:
+        id: create_type_rule_out
+        author: workwithdante
+        changes:
+            - sql:
+                sql: |
+                    CREATE TYPE config.rule_out AS (
+                        applies   BOOLEAN,
+                        label_out TEXT
+                    );
+        rollback:
+            - sql:
+                sql: |
+                    DROP TYPE IF EXISTS config.rule_out;
+
+    - changeSet:
+        id: create_table_status_results
+        author: workwithdante
+        changes:
+            - sql:
+                sql: |
+                    CREATE TABLE IF NOT EXISTS config.status_results (
+                        id            SERIAL,
+                        process_date  TIMESTAMP NOT NULL,
+                        batch_name    TEXT      NOT NULL,
+                        company       TEXT      NOT NULL,
+                        broker        INT       NOT NULL,
+                        status        TEXT      NOT NULL,
+                        crm_data      JSONB,
+                        csv_data      JSONB,
+                        review        TEXT      DEFAULT NULL,
+                        description   TEXT      DEFAULT NULL,
+                        PRIMARY KEY (id, process_date)
+                    ) PARTITION BY RANGE (process_date);
+        rollback:
+            - sql:
+                dbms: postgresql
+                sql: |
+                    DROP TABLE IF EXISTS config.status_results CASCADE;
+
+    - changeSet:
+        id: create_table_status_type
+        author: workwithdante
+        changes:
+            - createTable:
+                schemaName: config
+                tableName: status_type
+                columns:
+                - column:
+                    name: id
+                    type: serial
+                    constraints:
+                        primaryKey: true
+                        nullable: false
+                - column:
+                    name: name
+                    type: text
+                    constraints:
+                        nullable: false
+                        unique: true
+                - column:
+                    name: error
+                    type: boolean
+                    defaultValueBoolean: false
+                    constraints:
+                        nullable: false
+
+    - changeSet:
+        id: load_update_status_type
+        author: workwithdante
+        changes:
+            - loadUpdateData:
+                schemaName: config
+                tableName: status_type
+                primaryKey: name
+                file: changelogs/schemas/config/status_type.csv
+
+    - changeSet:
+        id: create_table_review_type
+        author: workwithdante
+        changes:
+            - createTable:
+                schemaName: config
+                tableName: review_type
+                columns:
+                - column:
+                    name: id
+                    type: serial
+                    constraints:
+                        primaryKey: true
+                        nullable: false
+                - column:
+                    name: name
+                    type: text
+                    constraints:
+                        nullable: false
+                        unique: true
+                - column:
+                    name: error
+                    type: boolean
+                    defaultValueBoolean: false
+                    constraints:
+                        nullable: false
+
+    - changeSet:
+        id: load_update_review_type
+        author: workwithdante
+        changes:
+            - loadUpdateData:
+                schemaName: config
+                tableName: review_type
+                primaryKey: name
+                file: changelogs/schemas/config/review_type.csv
+
+    - changeSet:
+        id: create_table_config_rules
+        author: workwithdante
+        changes:
+            - createTable:
+                schemaName: config
+                tableName: rules
+                columns:
+                - column:
+                    name: rule_fn
+                    type: REGPROCEDURE NOT NULL
+                    constraints:
+                        primaryKey: true
+                        nullable: false
+                - column:
+                    name: result_label
+                    type: text
+                    constraints:
+                        nullable: false
+                        unique: true
+                - column:
+                    name: priority
+                    type: INT
+                    constraints:
+                        nullable: false

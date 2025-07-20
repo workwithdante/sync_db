@@ -1,0 +1,56 @@
+databaseChangeLog:
+    - changeSet:
+        id: helper_member_id_match
+        author: workwithdante
+        runOnChange: true
+        changes:
+            - sql:
+                splitStatements: false
+                stripComments: true
+                sql: |
+                    CREATE OR REPLACE FUNCTION helpers.member_id_match(a TEXT, b TEXT)
+                        RETURNS BOOLEAN
+                        LANGUAGE sql
+                        IMMUTABLE
+                    AS $$
+                        SELECT parsers.normalize_member_id(a) = parsers.normalize_member_id(b);
+                    $$;
+        rollback:
+            - sql:
+                sql: DROP FUNCTION IF EXISTS helpers.member_id_match(TEXT, TEXT);
+
+
+    - changeSet:
+        id: create_get_tickets
+        author: workwithdante
+        runOnChange: true
+        changes:
+            - sql:
+                splitStatements: false
+                stripComments: true
+                sql: |
+                    CREATE OR REPLACE FUNCTION helpers.get_tickets(input_data_crm JSONB)
+                        RETURNS TEXT[]
+                        LANGUAGE sql
+                        STABLE
+                    AS $$
+                        SELECT COALESCE(
+                            ARRAY(
+                                WITH RECURSIVE
+                                    arr(node) AS (
+                                        SELECT input_data_crm -> 'ticket'
+                                        UNION ALL
+                                        SELECT jsonb_array_elements(node)
+                                        FROM arr
+                                        WHERE jsonb_typeof(node) = 'array'
+                                    )
+                                SELECT node #>> '{}' AS txt
+                                FROM arr
+                                WHERE jsonb_typeof(node) <> 'array'
+                            ),
+                            '{}'
+                        );
+                    $$;
+        rollback:
+            - sql:
+                sql: DROP FUNCTION IF EXISTS helpers.get_tickets(JSONB);

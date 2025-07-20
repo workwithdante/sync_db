@@ -1,8 +1,0 @@
-company,broker_name,field_name,column_name
-ambetter,Beatriz Sierra,policy_status,policy_status
-ambetter,Beatriz Sierra,member_id,Policy Number
-ambetter,Beatriz Sierra,termination_date,Policy Term Date
-ambetter,Ana Daniella Corrales,broker_termination_date,Broker Term Date
-oscar,Beatriz Sierra,effective_partial_date,Coverage start date
-molina,Beatriz Sierra,initial_date,Effective_date
-aetna,Beatriz Sierra,paid_through_date,Pain Through Date

@@ -5,6 +5,9 @@ databaseChangeLog:
       changes:
         - sql:
             sql: "CREATE EXTENSION IF NOT EXISTS pg_cron;"
+      rollback:
+            - sql:
+                sql: "DROP EXTENSION IF EXISTS pg_cron CASCADE;"
 
   - changeSet:
       id: create_function_create_partition_for_month
@@ -54,10 +57,6 @@ databaseChangeLog:
             splitStatements: false
             stripComments: true
             sql: |
-              
-
-              CREATE EXTENSION IF NOT EXISTS pg_cron;
-
               -- Create cron_job for detect new month
               DO $$
               BEGIN
@@ -91,10 +90,18 @@ databaseChangeLog:
                 END IF;
               END;
               $$;
+
       rollback:
         - sql:
             splitStatements: false
             stripComments: true
             sql: |
-              DROP VIEW IF EXISTS vtigercrm_2022.contacts_active CASCADE;
-  
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+                    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'create_next_month_partition') THEN
+                        PERFORM cron.unschedule('create_next_month_partition');
+                    END IF;
+                    END IF;
+                END;
+                $$;

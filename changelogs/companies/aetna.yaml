@@ -1,0 +1,97 @@
+databaseChangeLog:
+    - changeSet:
+        id: create_schema_aetna
+        author: workwithdante
+        changes:
+            - sql:
+                sql: CREATE SCHEMA IF NOT EXISTS aetna;
+        rollback:
+            - sql:
+                sql: DROP SCHEMA IF EXISTS aetna;
+
+    - changeSet:
+        id: create_unlogged_temp_aetna
+        author: workwithdante
+        changes:
+            - createTable:
+                schemaName: aetna
+                tableName: temp
+                tableOptions: UNLOGGED
+                columns:
+                - column:
+                    name: Member Name
+                    type: text
+                - column:
+                    name: Relationship
+                    type: text
+                - column:
+                    name: Plan ID
+                    type: text
+                - column:
+                    name: Metal Tier
+                    type: text
+                - column:
+                    name: Marketplace
+                    type: text
+                - column:
+                    name: Subscriber Status
+                    type: text
+                - column:
+                    name: Issuer Assigned ID
+                    type: text
+                - column:
+                    name: Effective Date
+                    type: text
+                - column:
+                    name: Financial Status
+                    type: text
+                - column:
+                    name: Autopay Status
+                    type: text
+                - column:
+                    name: Paid Through Date
+                    type: text
+
+    - changeSet:
+        id: create_view_bs_aetna
+        author: workwithdante
+        preConditions:
+            - dbms:
+                type: postgresql
+        changes:
+            - createView:
+                schemaName: aetna
+                viewName: bs
+                replaceIfExists: true
+                selectQuery: |
+                    SELECT
+                        temp.*
+                    FROM aetna.temp AS temp
+                    WHERE temp."Relationship" = 'Self';
+
+    - changeSet:
+        id: create_status_aetna
+        author: workwithdante
+        runOnChange: true
+        changes:
+            - sql:
+                splitStatements: false
+                stripComments: true
+                sql: |                        
+                    CREATE OR REPLACE FUNCTION aetna.get_status(input_data_csv JSONB, input_data_crm JSONB)
+                        RETURNS TABLE(status TEXT, new_clean_input_data_csv JSONB)
+                        LANGUAGE plpgsql
+                        STABLE
+                    AS $$
+                        BEGIN
+                            new_clean_input_data_csv :=  jsonb_strip_nulls(input_data_csv);
+
+                            status := callers.evaluate_status(new_clean_input_data_csv, input_data_crm);
+                            RETURN NEXT;
+                        END;
+                    $$;
+        rollback:
+            - sql:
+                splitStatements: false
+                stripComments: true
+                sql: DROP FUNCTION IF EXISTS aetna.get_status(JSONB, JSONB);

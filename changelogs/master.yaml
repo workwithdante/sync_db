@@ -1,9 +1,15 @@
 databaseChangeLog:
     - includeAll:
-        patch: schema
+        path: changelogs/schemas
     - includeAll:
-        patch: builders
+        path: changelogs/builders
     - includeAll:
-        patch: callers
+        path: changelogs/parsers
     - includeAll:
-        patch: parsers
+        path: changelogs/helpers
+    - includeAll:
+        path: changelogs/companies
+    - includeAll:
+        path: changelogs/callers
+    - includeAll:
+        path: changelogs/checkers

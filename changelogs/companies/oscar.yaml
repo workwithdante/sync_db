@@ -1,0 +1,182 @@
+databaseChangeLog:
+    - changeSet:
+        id: create_schema_oscar
+        author: workwithdante
+        changes:
+            - sql:
+                sql: CREATE SCHEMA IF NOT EXISTS oscar;
+        rollback:
+            - sql:
+                sql: DROP SCHEMA IF EXISTS oscar CASCADE;
+
+    - changeSet:
+        id: create_unlogged_temp_oscar
+        author: workwithdante
+        preConditions:
+            - dbms:
+                type: postgresql
+        changes:
+            - createTable:
+                schemaName: oscar
+                tableName: temp
+                tableOptions: UNLOGGED
+                columns:
+                - column:
+                    name: Member ID
+                    type: text
+                - column:
+                    name: Member name
+                    type: text
+                - column:
+                    name: Date of birth
+                    type: text
+                - column:
+                    name: Account creation status
+                    type: text
+                - column:
+                    name: Email
+                    type: text
+                - column:
+                    name: Phone number
+                    type: double precision
+                - column:
+                    name: Mailing address
+                    type: text
+                - column:
+                    name: State
+                    type: text
+                - column:
+                    name: Enrollment type
+                    type: text
+                - column:
+                    name: On exchange
+                    type: text
+                - column:
+                    name: Plan
+                    type: text
+                - column:
+                    name: Premium amount
+                    type: text
+                - column:
+                    name: APTC subsidy
+                    type: text
+                - column:
+                    name: Lives
+                    type: bigint
+                - column:
+                    name: Coverage start date
+                    type: text
+                - column:
+                    name: Coverage end date
+                    type: text
+                - column:
+                    name: Policy status
+                    type: text
+                - column:
+                    name: Renewal enrollment type
+                    type: double precision
+                - column:
+                    name: Renewal plan
+                    type: double precision
+                - column:
+                    name: Renewal premium amount
+                    type: double precision
+                - column:
+                    name: Renewal APTC subsidy
+                    type: double precision
+                - column:
+                    name: Renewal date
+                    type: double precision
+                - column:
+                    name: Autopay
+                    type: text
+                - column:
+                    name: ICHRA member
+                    type: text
+                - column:
+                    name: Estimated FPL
+                    type: integer
+
+    - changeSet:
+        id: create_view_bs_oscar
+        author: workwithdante
+        preConditions:
+            - dbms:
+                type: postgresql
+        changes:
+            - createView:
+                schemaName: oscar
+                viewName: bs
+                replaceIfExists: true
+                selectQuery: |
+                    SELECT
+                        temp.*,
+                        CASE "Policy status"
+                        WHEN 'Active'       THEN helpers.last_day_curdate()
+                        WHEN 'Grace period' THEN helpers.last_day_last_month()
+                        WHEN 'Delinquent'   THEN helpers.last_day_two_last_month()
+                        ELSE NULL
+                        END AS paid_through_date
+                    FROM oscar.temp AS temp;
+
+    - changeSet:
+        id: create_view_adc_oscar
+        author: workwithdante
+        preConditions:
+            - dbms:
+                type: postgresql
+        changes:
+            - createView:
+                schemaName: oscar
+                viewName: adc
+                replaceIfExists: true
+                selectQuery: |
+                    SELECT
+                        temp.*,
+                        CASE "Policy status"
+                        WHEN 'Active'       THEN helpers.last_day_curdate()
+                        WHEN 'Grace period' THEN helpers.last_day_last_month()
+                        WHEN 'Delinquent'   THEN helpers.last_day_two_last_month()
+                        ELSE NULL
+                        END AS paid_through_date
+                    FROM oscar.temp AS temp;
+    
+    - changeSet:
+        id: create_status_oscar
+        author: workwithdante
+        runOnChange: true
+        changes:
+            - sql:
+                splitStatements: false
+                stripComments: true
+                sql: |                        
+                    CREATE OR REPLACE FUNCTION oscar.get_status(input_data_csv JSONB, input_data_crm JSONB)
+                        RETURNS TABLE(status TEXT, new_clean_input_data_csv JSONB)
+                        LANGUAGE plpgsql
+                        STABLE
+                    AS $$
+                        DECLARE
+                            payment_type                TEXT := input_data_csv->>'payment_type';
+                            policy_status               TEXT := input_data_csv->>'policy_status';
+                            new_input_data_csv          JSONB;
+                        BEGIN
+                            IF payment_type = 'ON' THEN
+                                new_input_data_csv := input_data_csv || jsonb_build_object('payment_type', 'YES');
+                            ELSE
+                                new_input_data_csv := input_data_csv || jsonb_build_object('payment_type', null);
+                            END IF;
+
+                            new_clean_input_data_csv :=  jsonb_strip_nulls(new_input_data_csv);
+
+                            status := company.evaluate_status(new_clean_input_data_csv, input_data_crm);
+
+                            IF status = 'Bounce' AND policy_status = 'Active' THEN
+                                status := 'Paid';
+                            END IF;
+                            
+                            RETURN NEXT;
+                        END;
+                    $$;
+        rollback:
+            - sql:
+                sql: DROP FUNCTION IF EXISTS oscar.get_status(JSONB, JSONB);

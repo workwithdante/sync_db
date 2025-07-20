@@ -1,5 +1,6 @@
 {
   // **Indentación global**: usa espacios en lugar de tabs, y 4 espacios de ancho
+  "editor.detectIndentation": false,
   "editor.insertSpaces": true,
   "editor.tabSize": 4,
 
