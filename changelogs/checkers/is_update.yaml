@@ -41,5 +41,5 @@ databaseChangeLog:
         rollback:
             - sql:
                 sql: |
-                    DROP FUNCTION IF EXISTS checkers.is_update(JSONB, JSONB);
                     DELETE FROM config.rules WHERE rule_fn = 'checkers.is_update(jsonb,jsonb)'::regprocedure;
+                    DROP FUNCTION IF EXISTS checkers.is_update(JSONB, JSONB);

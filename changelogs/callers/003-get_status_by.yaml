@@ -53,8 +53,8 @@ databaseChangeLog:
                             END IF;
 
                             -- construyendo los valores necesarios para la lógica del crm y csv
-                            json_args_crm := company.build_args_crm();
-                            json_args_csv := company.build_args_csv(v_dispatcher_id);
+                            json_args_crm := builders.args_crm();
+                            json_args_csv := builders.args_csv(v_dispatcher_id);
                             
                             --Obteniendo el nombre real de la columna ID
                             SELECT inf.column_name
@@ -81,7 +81,7 @@ databaseChangeLog:
                                 );
                             ELSE
                                 join_sql := format(
-                                    'company.member_id_match(company.%1$I, data.member_id)',
+                                    'helpers.member_id_match(company.%1$I, data.member_id)',
                                     join_col              -- %1$I → identificador de columna
                                 );
                             END IF;
@@ -106,7 +106,7 @@ databaseChangeLog:
                                 initcap(p_company), UPPER(p_broker_name), status_col, 'Inactive'
                             );
 
-                            dyn_sql := builders.build_query(p_company_code, p_broker_code, join_sql, json_args_crm, json_args_csv, condition_sql, batch_name, process_date, p_tbl);
+                            dyn_sql := builders.query(p_company_code, p_broker_code, join_sql, json_args_crm, json_args_csv, condition_sql, batch_name, process_date, p_tbl);
 
                             RETURN QUERY EXECUTE dyn_sql
                                 USING p_company_code, p_broker_code

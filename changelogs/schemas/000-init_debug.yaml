@@ -1,0 +1,10 @@
+databaseChangeLog: 
+  - changeSet:
+        id: create_extension_pldbgapi
+        author: workwithdante
+        changes:
+            - sql:
+                sql: "CREATE EXTENSION IF NOT EXISTS pldbgapi;"
+        rollback:
+            - sql:
+                sql: "DROP EXTENSION IF EXISTS pldbgapi CASCADE;"

@@ -35,19 +35,19 @@ databaseChangeLog:
                                         'character varying',
                                         'text'
                                     ) AND f.field_name ~* 'date' THEN
-                                        format('%L, TO_CHAR(callers.%I::date, ''YYYY-MM-DD'')',
+                                        format('%L, TO_CHAR(company.%I::date, ''YYYY-MM-DD'')',
                                                 f.field_name,
                                                 si.column_name)
                                     WHEN c.data_type IN ('character varying','text')
                                         AND f.field_name ~* 'premium' THEN
                                         format(
-                                            '%L, COALESCE(CASE WHEN callers.%I ~ ''^\$'' THEN CAST(regexp_replace(callers.%I, ''^\$'', '''', ''g'') AS NUMERIC) WHEN company.%I IS NULL THEN NULL ELSE company.%I::NUMERIC END, NULL)',
+                                            '%L, COALESCE(CASE WHEN company.%I ~ ''^\$'' THEN CAST(regexp_replace(company.%I, ''^\$'', '''', ''g'') AS NUMERIC) WHEN company.%I IS NULL THEN NULL ELSE company.%I::NUMERIC END, NULL)',
                                             f.field_name, si.column_name, si.column_name, si.column_name, si.column_name
                                         )
                                     WHEN c.data_type IN ('integer','bigint','smallint') THEN
-                                        format('%L, COALESCE(callers.%I,0)', f.field_name, si.column_name)
+                                        format('%L, COALESCE(company.%I,0)', f.field_name, si.column_name)
                                     ELSE
-                                        format('%L, callers.%I', f.field_name, si.column_name)
+                                        format('%L, company.%I', f.field_name, si.column_name)
                                 END,
                                 ', '
                             ) INTO args_company

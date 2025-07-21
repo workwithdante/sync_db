@@ -168,7 +168,7 @@ databaseChangeLog:
 
                             new_clean_input_data_csv :=  jsonb_strip_nulls(new_input_data_csv);
 
-                            status := company.evaluate_status(new_clean_input_data_csv, input_data_crm);
+                            status := callers.evaluate_status(new_clean_input_data_csv, input_data_crm);
 
                             IF status = 'Bounce' AND policy_status = 'Active' THEN
                                 status := 'Paid';

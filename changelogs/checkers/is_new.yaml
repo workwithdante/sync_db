@@ -14,9 +14,9 @@ databaseChangeLog:
                         STABLE
                     AS $$
                         DECLARE
-                            paid_through_date           DATE := company.parse_date_mixed(input_data_csv ->> 'paid_through_date');
-                            sales_date                  DATE := company.parse_date_mixed(input_data_crm ->> 'sales_date');
-                            last_day_last_month         DATE := company.last_day_last_month();
+                            paid_through_date           DATE := parsers.parse_date_mixed(input_data_csv ->> 'paid_through_date');
+                            sales_date                  DATE := parsers.parse_date_mixed(input_data_crm ->> 'sales_date');
+                            last_day_last_month         DATE := helpers.last_day_last_month();
                             ticket                      TEXT[] := helpers.get_tickets(input_data_crm);
                             premium                     NUMERIC := input_data_csv ->> 'premium';
                             problems                    BOOLEAN;
@@ -54,5 +54,5 @@ databaseChangeLog:
         rollback:
             - sql:
                 sql: |
-                    DROP FUNCTION IF EXISTS checkers.is_new(JSONB, JSONB);
                     DELETE FROM config.rules WHERE rule_fn = 'checkers.is_new(jsonb,jsonb)'::regprocedure;
+                    DROP FUNCTION IF EXISTS checkers.is_new(JSONB, JSONB);
