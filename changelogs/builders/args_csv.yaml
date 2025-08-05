@@ -41,8 +41,9 @@ databaseChangeLog:
                                     WHEN c.data_type IN ('character varying','text')
                                         AND f.field_name ~* 'premium' THEN
                                         format(
-                                            '%L, COALESCE(CASE WHEN company.%I ~ ''^\$'' THEN CAST(regexp_replace(company.%I, ''^\$'', '''', ''g'') AS NUMERIC) WHEN company.%I IS NULL THEN NULL ELSE company.%I::NUMERIC END, NULL)',
-                                            f.field_name, si.column_name, si.column_name, si.column_name, si.column_name
+                                            '%L, COALESCE(regexp_replace(company.%I, ''[$,]'', '''', ''g'')::NUMERIC, NULL)',
+                                            f.field_name,
+                                            si.column_name
                                         )
                                     WHEN c.data_type IN ('integer','bigint','smallint') THEN
                                         format('%L, COALESCE(company.%I,0)', f.field_name, si.column_name)
