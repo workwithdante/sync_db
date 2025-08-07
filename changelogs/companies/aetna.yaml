@@ -13,44 +13,34 @@ databaseChangeLog:
         id: create_unlogged_temp_aetna
         author: workwithdante
         changes:
-            - createTable:
-                schemaName: aetna
-                tableName: temp
-                tableOptions: UNLOGGED
-                columns:
-                - column:
-                    name: Member Name
-                    type: text
-                - column:
-                    name: Relationship
-                    type: text
-                - column:
-                    name: Plan ID
-                    type: text
-                - column:
-                    name: Metal Tier
-                    type: text
-                - column:
-                    name: Marketplace
-                    type: text
-                - column:
-                    name: Subscriber Status
-                    type: text
-                - column:
-                    name: Issuer Assigned ID
-                    type: text
-                - column:
-                    name: Effective Date
-                    type: text
-                - column:
-                    name: Financial Status
-                    type: text
-                - column:
-                    name: Autopay Status
-                    type: text
-                - column:
-                    name: Paid Through Date
-                    type: text
+            - sql:
+                sql: |
+                    CREATE UNLOGGED TABLE IF NOT EXISTS aetna.temp (
+                        "Member Name"                   TEXT,
+                        "DOB"                           TEXT,
+                        "Exchange Assigned ID"          TEXT,
+                        "Issuer Assigned ID"            TEXT,
+                        "Metal Tier"                    TEXT,
+                        "Member Plan ID"                TEXT,
+                        "Member Plan Name"              TEXT,
+                        "Household Size"                TEXT,
+                        "Relationship"                  TEXT,
+                        "Plan Effective Date"           TEXT,
+                        "Monthly Premium"               TEXT,
+                        "AutoPay Status"                TEXT,
+                        "Payment Status"                TEXT,
+                        "Account Status"                TEXT,
+                        "Paid Through Date"             TEXT,
+                        "Primary Contact"               TEXT,
+                        "Mailing Address"               TEXT,
+                        "County"                        TEXT,
+                        "State"                         TEXT,
+                        "Zip"                           TEXT
+                    );
+
+        rollback:
+            - sql:
+                sql: DROP TABLE IF EXISTS molina.temp;
 
     - changeSet:
         id: create_view_bs_aetna

@@ -36,7 +36,7 @@ molina,Beatriz Sierra,premium,Member_Premium
 molina,Beatriz Sierra,broker_termination_date,Broker_End_Date
 molina,Beatriz Sierra,initial_date,Effective_date
 molina,Beatriz Sierra,paid_through_date,Paid_Through_Date
-aetna,Beatriz Sierra,policy_status,Financial Status
+aetna,Beatriz Sierra,policy_status,Account Status
 aetna,Beatriz Sierra,member_id,Issuer Assigned ID
 aetna,Beatriz Sierra,paid_through_date,Paid Through Date
-aetna,Beatriz Sierra,effective_partial_date,Effective Date
+aetna,Beatriz Sierra,effective_partial_date,Plan Effective Date
