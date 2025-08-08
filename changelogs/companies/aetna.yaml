@@ -40,7 +40,7 @@ databaseChangeLog:
 
         rollback:
             - sql:
-                sql: DROP TABLE IF EXISTS molina.temp;
+                sql: DROP TABLE IF EXISTS aetna.temp;
 
     - changeSet:
         id: create_view_bs_aetna

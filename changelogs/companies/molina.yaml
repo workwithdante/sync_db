@@ -78,7 +78,8 @@ databaseChangeLog:
                         WHEN temp2."Status" = 'Active' THEN 'Active'
                         ELSE 'Inactive'
                         END AS policy_status
-                    FROM temp2;
+                    FROM temp2
+                    WHERE temp2."HIX_ID" = temp2."Subscriber_ID";
 
     - changeSet:
         id: create_status_molina
