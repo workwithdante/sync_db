@@ -31,7 +31,7 @@ oscar,Ana Daniella Corrales,paid_through_date,paid_through_date
 oscar,Ana Daniella Corrales,payment_type,Autopay
 molina,Beatriz Sierra,policy_status,policy_status
 molina,Beatriz Sierra,member_id,HIX_ID
-molina,Beatriz Sierra,termination_date,End_Date
+molina,Beatriz Sierra,termination_date,termination_date
 molina,Beatriz Sierra,premium,Member_Premium
 molina,Beatriz Sierra,broker_termination_date,Broker_End_Date
 molina,Beatriz Sierra,initial_date,Effective_date
